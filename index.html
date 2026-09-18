@@ -100,7 +100,15 @@ footer strong{color:#fff}
       <button class="chip" data-q="¿Cómo lo contacto para mi servidor?">Contacto</button>
     </div>
     <div class="rowbtns"><select id="imgStyle"><option value="pixel art estilo Minecraft">🎮 Pixel-art MC</option><option value="realista detallado">📷 Realista</option><option value="anime">⛩️ Anime</option><option value="logo minimalista de videojuegos">🔰 Logo</option></select></div>
-    <div class="chatbar"><input id="chatIn" maxlength="300" placeholder="Pregunta, /wiki tema o /img idea…"><button class="btn primary" id="chatGo" type="button">Enviar</button></div>
+    <div class="chatbar"><input id="chatIn" maxlength="300" placeholder="Pregunta, /wiki tema o /img idea…"><button class="btn" id="attachBtn" type="button" title="Adjuntar foto">📎</button><button class="btn" id="camBtn" type="button" title="Tomar foto">📷</button><button class="btn" id="micBtn" type="button" title="Hablar">🎙️</button><button class="btn primary" id="chatGo" type="button">Enviar</button></div>
+    <input type="file" id="fileIn" accept="image/*" style="display:none">
+    <div id="imgPrev" style="display:none;align-items:center;gap:8px;margin-top:8px"><img id="imgThumb" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" alt="adjunto"><small class="muted">Imagen lista para enviar.</small><button type="button" class="btn" id="imgX" style="padding:4px 10px">✕</button></div>
+    <div id="camModal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.88);place-items:center;padding:20px">
+      <div class="glass" style="padding:16px;text-align:center;max-width:520px">
+        <video id="camVideo" autoplay playsinline style="max-width:100%;border-radius:10px"></video>
+        <div class="rowbtns" style="justify-content:center"><button type="button" class="btn primary" id="camShot">📸 Capturar</button><button type="button" class="btn" id="camClose">Cerrar</button></div>
+      </div>
+    </div>
     <div class="rowbtns"><button class="btn" id="chatClear" type="button">Limpiar chat 🧹</button><button class="btn" id="chatExport" type="button">Exportar ⬇️</button></div>
   </div>
 </main>
@@ -193,8 +201,14 @@ function botHTML(text,via){
 }
 function genImage(p,seed){
   if(!p){addMsg('Describe la imagen tras /img 🖼️ (prueba: /img castillo flotante de noche)','bot');return}
-  const style=(document.getElementById('imgStyle')||{}).value||'pixel art estilo Minecraft';
-  const full=`${p}, ${style}, alta calidad, detallado`;
+  const STYLES={
+    "pixel art estilo Minecraft":"Arte pixel-art estilo Minecraft, voxels cúbicos, paleta del juego",
+    "realista detallado":"Foto realista muy detallada, iluminación cinematográfica",
+    "anime":"Estilo anime vibrante, líneas limpias",
+    "logo minimalista de videojuegos":"Logo minimalista de videojuegos, fondo simple y plano"
+  };
+  const styleKey=(document.getElementById('imgStyle')||{}).value||'pixel art estilo Minecraft';
+  const full=`${STYLES[styleKey]||styleKey}: ${p}. Alta calidad, muy detallado`;
   seed=seed||Math.floor(Math.random()*999999);
   const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(full)}?width=768&height=768&nologo=true&private=true&seed=${seed}&model=flux`;
   const d=document.createElement('div');d.className='msg bot';
@@ -239,9 +253,101 @@ document.getElementById('chatExport').addEventListener('click',()=>{
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='disco-ai-chat.txt';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 });
+// ---------- Fotos (adjuntar/tomar) + voz ----------
+let pendingImg=null;
+function fileToThumb(file){
+  return new Promise((res,rej)=>{
+    const rd=new FileReader();
+    rd.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const M=1024;
+        const sc=Math.min(1,M/Math.max(im.width,im.height));
+        const c=document.createElement('canvas');
+        c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',0.82));
+      };
+      im.onerror=rej;im.src=rd.result;
+    };
+    rd.onerror=rej;rd.readAsDataURL(file);
+  });
+}
+function renderImgPrev(){
+  const box=document.getElementById('imgPrev');
+  if(!pendingImg){box.style.display='none';return}
+  box.style.display='flex';
+  document.getElementById('imgThumb').src=pendingImg;
+}
+document.getElementById('attachBtn').addEventListener('click',()=>document.getElementById('fileIn').click());
+document.getElementById('fileIn').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  try{pendingImg=await fileToThumb(f);renderImgPrev()}
+  catch(err){alert('No se pudo leer esa imagen.')}
+  e.target.value='';
+});
+document.getElementById('imgX').addEventListener('click',()=>{pendingImg=null;renderImgPrev()});
+let camStream=null;
+function stopCam(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}}
+document.getElementById('camBtn').addEventListener('click',async()=>{
+  const m=document.getElementById('camModal');
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});
+    document.getElementById('camVideo').srcObject=camStream;
+    m.style.display='grid';
+  }catch(e){alert('Sin acceso a la cámara (permiso denegado o sin HTTPS).')}
+});
+document.getElementById('camClose').addEventListener('click',()=>{stopCam();document.getElementById('camModal').style.display='none'});
+document.getElementById('camShot').addEventListener('click',()=>{
+  const v=document.getElementById('camVideo');
+  if(!v.videoWidth){alert('La cámara aún no inicia.');return}
+  const M=1024,sc=Math.min(1,M/Math.max(v.videoWidth,v.videoHeight));
+  const c=document.createElement('canvas');
+  c.width=Math.round(v.videoWidth*sc);c.height=Math.round(v.videoHeight*sc);
+  c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  pendingImg=c.toDataURL('image/jpeg',0.82);
+  renderImgPrev();stopCam();
+  document.getElementById('camModal').style.display='none';
+  addMsg('📷 Foto lista. Escribe qué quieres saber de ella y envía.','bot');
+});
+let rec=null;
+document.getElementById('micBtn').addEventListener('click',()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Tu navegador no tiene dictado por voz (usa Chrome o Edge).');return}
+  const btn=document.getElementById('micBtn');
+  if(rec){rec.stop();rec=null;btn.textContent='🎙️';return}
+  rec=new SR();rec.lang='es-ES';rec.interimResults=false;
+  btn.textContent='⏺️';
+  rec.onresult=e=>{
+    const t=e.results[0][0].transcript;
+    document.getElementById('chatIn').value=(document.getElementById('chatIn').value+' '+t).trim();
+  };
+  rec.onend=()=>{rec=null;btn.textContent='🎙️'};
+  rec.onerror=()=>{rec=null;btn.textContent='🎙️'};
+  try{rec.start()}catch(e){rec=null;btn.textContent='🎙️'}
+});
+async function aiVision(prompt,img){
+  try{
+    if(window.puter&&puter.ai&&puter.ai.chat){
+      const t=aiExtract(await puter.ai.chat(prompt,img));
+      if(t&&t.trim())return{text:t.trim(),via:"Puter.js (visión)"};
+    }
+  }catch(e){console.warn(e)}
+  throw new Error("La visión necesita Puter.js: desactiva el AdBlock para js.puter.com e inténtalo de nuevo.");
+}
 async function ask(q){
-  addMsg(escT(q),'user');chatIn.value='';
-  hist.push("Usuario: "+q);
+  const withImg=!!pendingImg;
+  const imgData=pendingImg;
+  pendingImg=null;renderImgPrev();
+  const uMsg=addMsg(escT(q)+(withImg?" 📷":''),'user');
+  if(withImg){
+    const th=document.createElement('img');
+    th.src=imgData;th.style.cssText='max-width:160px;border-radius:8px;margin-top:6px';
+    uMsg.appendChild(th);chatBox.scrollTop=chatBox.scrollHeight;
+  }
+  chatIn.value='';
+  hist.push("Usuario: "+q+(withImg?" [con foto]":""));
   const low=q.toLowerCase();
   if(low.startsWith('/img '))return genImage(q.slice(5).trim());
   if(low.startsWith('/wiki '))return wikiLook(q.slice(6).trim());
@@ -249,7 +355,12 @@ async function ask(q){
   chatBox.appendChild(typing);chatBox.scrollTop=chatBox.scrollHeight;
   const model=document.getElementById('modelSel').value||"";
   try{
-    const r=await aiChat(SYS_MODES[curMode]+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+    let r;
+    if(withImg){
+      r=await aiVision((q||"Describe esta imagen en detalle, en español neutro.")+"\nResponde en español neutro, máximo 120 palabras.",imgData);
+    }else{
+      r=await aiChat(SYS_MODES[curMode]+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+    }
     const d=document.createElement('div');d.className='msg bot';
     d.dataset.txt=r.text;
     d.innerHTML=botHTML(r.text,r.via);
