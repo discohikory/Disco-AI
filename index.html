@@ -35,6 +35,11 @@ main{max-width:900px;margin:auto;padding:24px}
 .msg.user{background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);align-self:flex-end}
 .msg.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);align-self:flex-start}
 .msg .via{display:block;font-size:10px;color:var(--muted);margin-top:6px}
+.msg{animation:msgIn .3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}}
+.acts{display:block;margin-top:6px}
+.acts button{background:none;border:1px solid var(--line);border-radius:7px;color:#fff;font-size:11px;padding:3px 9px;cursor:pointer;margin-right:6px}
+.acts button:hover{border-color:var(--a)}
 .chatbar{display:flex;gap:8px;margin-top:12px}
 .chatbar input{flex:1;font-family:inherit;color:#fff;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px;outline:none;font-size:14px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -70,7 +75,7 @@ footer strong{color:#fff}
     <div class="orb">🤖</div>
     <h1>Disco AI</h1>
     <p class="eyebrow">PREGÚNTAME LO QUE SEA</p>
-    <p class="lead">Conozco la historia, proyectos y contacto de Discohikorybrs. Pregunta sin pena.</p>
+    <p class="lead">Conozco la historia, proyectos y contacto de Discohikorybrs. Genero imágenes (/img), consulto Wikipedia (/wiki) y leo en voz alta. Pregunta sin pena.</p>
   </div>
   <div class="card glass">
     <div class="chips" id="modeChips" style="margin:0 0 10px">
@@ -88,8 +93,8 @@ footer strong{color:#fff}
       <button class="chip" data-q="¿Qué proyectos tiene?">Proyectos</button>
       <button class="chip" data-q="¿Cómo lo contacto para mi servidor?">Contacto</button>
     </div>
-    <div class="chatbar"><input id="chatIn" maxlength="300" placeholder="Pregunta algo…"><button class="btn primary" id="chatGo" type="button">Enviar</button></div>
-    <div class="rowbtns"><button class="btn" id="chatClear" type="button">Limpiar chat 🧹</button></div>
+    <div class="chatbar"><input id="chatIn" maxlength="300" placeholder="Pregunta, /wiki tema o /img idea…"><button class="btn primary" id="chatGo" type="button">Enviar</button></div>
+    <div class="rowbtns"><button class="btn" id="chatClear" type="button">Limpiar chat 🧹</button><button class="btn" id="chatExport" type="button">Exportar ⬇️</button></div>
   </div>
 </main>
 <section style="max-width:900px;margin:6px auto 0;padding:0 24px">
@@ -152,15 +157,74 @@ document.addEventListener('click',e=>{
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(el.textContent).then(done).catch(()=>done())}
   else{const ta=document.createElement('textarea');ta.value=el.textContent;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove();done()}
 });
+function speak(t){
+  try{
+    if(!('speechSynthesis' in window)){alert('Tu navegador no tiene voz.');return}
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(String(t).slice(0,400));
+    u.lang='es-ES';u.rate=1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+chatBox.addEventListener('click',e=>{
+  const b=e.target.closest?e.target.closest('[data-say],[data-cp]'):null;
+  if(!b)return;
+  const box=b.closest('.msg');
+  const txt=(box&&box.dataset.txt)||(box?box.innerText:"");
+  if(b.hasAttribute('data-say')){speak(txt);return}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(()=>{b.textContent='✅';setTimeout(()=>{b.textContent='📋'},1500)})}
+  else{b.textContent='✅';setTimeout(()=>{b.textContent='📋'},1500)}
+});
+function botHTML(text,via){
+  return fmtAI(text)+`<span class="via">Vía ${via} 🤖</span><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
+}
+function genImage(p){
+  if(!p){addMsg('Describe la imagen tras /img 🖼️','bot');return}
+  const seed=Math.floor(Math.random()*999999);
+  const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=768&height=768&nologo=true&seed=${seed}`;
+  const d=document.createElement('div');d.className='msg bot';
+  d.dataset.txt='[imagen generada: '+p+']';
+  d.innerHTML=`🖼️ Generando <i>${p.replace(/</g,"&lt;")}</i>… ⏳<br><img data-img style="max-width:100%;border-radius:10px;margin-top:8px;opacity:.4" alt="imagen generada">`;
+  chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
+  const im=d.querySelector('[data-img]');
+  im.onload=()=>{im.style.opacity='1';const a=document.createElement('a');a.href=url;a.download='disco-ai.png';a.textContent='⬇️ Descargar';a.className='btn';a.style.cssText='display:inline-block;margin-top:8px;font-size:12px;padding:8px 14px';d.appendChild(a);hist.push('Disco AI: [imagen: '+p+']')};
+  im.onerror=()=>{d.innerHTML+='<br>⚠️ No se pudo generar. Intenta otra descripción.'};
+  im.src=url;
+}
+async function wikiLook(topic){
+  if(!topic){addMsg('Escribe /wiki seguido del tema. 📚','bot');return}
+  const d=document.createElement('div');d.className='msg bot';d.textContent='Buscando en Wikipedia… ⏳';
+  chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
+  try{
+    const r=await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(topic));
+    if(!r.ok)throw 0;
+    const j=await r.json();
+    const link='https://es.wikipedia.org/wiki/'+encodeURIComponent(topic.replace(/ /g,'_'));
+    d.dataset.txt=(j.title||topic)+': '+(j.extract||'Sin resumen.');
+    d.innerHTML=`<b>${d.dataset.txt.split(':')[0]}</b><br>${j.extract||'Sin resumen.'}${j.thumbnail?`<br><img src="${j.thumbnail.source}" style="max-width:100%;border-radius:8px;margin-top:8px">`:''}<br><a href="${link}" target="_blank" rel="noopener" style="color:#b39aff">Leer más ↗</a><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
+    hist.push('Disco AI: [wiki '+topic+']');
+  }catch(e){d.textContent='No encontré eso en Wikipedia. Prueba otro término. 📚'}
+}
+document.getElementById('chatExport').addEventListener('click',()=>{
+  const txt=hist.join('\n')||'Sin conversación.';
+  const b=new Blob(['DISCO AI — conversación\n\n'+txt],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='disco-ai-chat.txt';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+});
 async function ask(q){
   addMsg(escT(q),'user');chatIn.value='';
+  hist.push("Usuario: "+q);
+  const low=q.toLowerCase();
+  if(low.startsWith('/img '))return genImage(q.slice(5).trim());
+  if(low.startsWith('/wiki '))return wikiLook(q.slice(6).trim());
   const typing=document.createElement('div');typing.className='msg bot typing';typing.innerHTML='<i></i><i></i><i></i>';
   chatBox.appendChild(typing);chatBox.scrollTop=chatBox.scrollHeight;
-  hist.push("Usuario: "+q);
   const model=document.getElementById('modelSel').value||"";
   try{
     const r=await aiChat(SYS_MODES[curMode]+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
-    const d=document.createElement('div');d.className='msg bot';d.innerHTML=fmtAI(r.text)+`<span class="via">Vía ${r.via} 🤖</span>`;
+    const d=document.createElement('div');d.className='msg bot';
+    d.dataset.txt=r.text;
+    d.innerHTML=botHTML(r.text,r.via);
     typing.replaceWith(d);
     chatBox.scrollTop=chatBox.scrollHeight;
     hist.push("Disco AI: "+r.text);
