@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#04060d">
+<link rel="dns-prefetch" href="https://fonts.gstatic.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
 <meta name="description" content="Disco AI: asistente virtual de Discohikorybrs. Pregúntale por su experiencia, proyectos y contacto.">
@@ -40,6 +43,9 @@ main{max-width:900px;margin:auto;padding:24px}
 .acts{display:block;margin-top:6px}
 .acts button{background:none;border:1px solid var(--line);border-radius:7px;color:#fff;font-size:11px;padding:3px 9px;cursor:pointer;margin-right:6px}
 .acts button:hover{border-color:var(--a)}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+select,input[type=text]{font-family:inherit;color:#fff;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;outline:none;font-size:13px}
+#imgStyle{max-width:230px}
 .chatbar{display:flex;gap:8px;margin-top:12px}
 .chatbar input{flex:1;font-family:inherit;color:#fff;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px;outline:none;font-size:14px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -93,6 +99,7 @@ footer strong{color:#fff}
       <button class="chip" data-q="¿Qué proyectos tiene?">Proyectos</button>
       <button class="chip" data-q="¿Cómo lo contacto para mi servidor?">Contacto</button>
     </div>
+    <div class="rowbtns"><select id="imgStyle"><option value="pixel art estilo Minecraft">🎮 Pixel-art MC</option><option value="realista detallado">📷 Realista</option><option value="anime">⛩️ Anime</option><option value="logo minimalista de videojuegos">🔰 Logo</option></select></div>
     <div class="chatbar"><input id="chatIn" maxlength="300" placeholder="Pregunta, /wiki tema o /img idea…"><button class="btn primary" id="chatGo" type="button">Enviar</button></div>
     <div class="rowbtns"><button class="btn" id="chatClear" type="button">Limpiar chat 🧹</button><button class="btn" id="chatExport" type="button">Exportar ⬇️</button></div>
   </div>
@@ -105,7 +112,7 @@ footer strong{color:#fff}
 </section>
 <footer>© 2026 Daniel Esteban Vera Fernandez · <strong>Discohikorybrs</strong> · Todos los derechos reservados.<br><small>Disco AI responde con IA gratuita: verifica datos importantes. Hecho con ⛏️</small><div class="visits">👁 <span id="visitCount">…</span> visitas</div></footer>
 <script>
-const PROJS=[["Portfolio principal","https://discohikory.github.io/Portafolio/"],["Staff Toolkit","https://discohikory.github.io/Staff-Toolkit/"],["Wiki de Comandos","https://discohikory.github.io/Wiki-Comandos/"],["Quiz Staff","https://discohikory.github.io/Quiz-Staff/"],["Status en vivo","https://discohikory.github.io/Server-Status/"],["Guía de Encantamientos","https://discohikory.github.io/Guia-Encantamientos/"],["Crónicas del Staff","https://discohikory.github.io/Cronicas/"],["Centro de comunidad","https://discohikory.github.io/Comunidad/"],["PlayerCards","https://discohikory.github.io/PlayerCards/"],["Radio Gamer","https://discohikory.github.io/Radio-Gamer/"],["Starter Pack","https://discohikory.github.io/Starter-Pack/"],["Aldeano IA","https://discohikory.github.io/Aldeano-IA/"],["Bingo MC","https://discohikory.github.io/Bingo-MC/"]];
+const PROJS=[["Portfolio principal","https://discohikory.github.io/Portafolio/"],["Staff Toolkit","https://discohikory.github.io/Staff-Toolkit/"],["Wiki de Comandos","https://discohikory.github.io/Wiki-Comandos/"],["Quiz Staff","https://discohikory.github.io/Quiz-Staff/"],["Status en vivo","https://discohikory.github.io/Server-Status/"],["Guía de Encantamientos","https://discohikory.github.io/Guia-Encantamientos/"],["Crónicas del Staff","https://discohikory.github.io/Cronicas/"],["Centro de comunidad","https://discohikory.github.io/Comunidad/"],["PlayerCards","https://discohikory.github.io/PlayerCards/"],["Radio Gamer","https://discohikory.github.io/Radio-Gamer/"],["Starter Pack","https://discohikory.github.io/Starter-Pack/"],["Aldeano IA","https://discohikory.github.io/Aldeano-IA/"],["Bingo MC","https://discohikory.github.io/Bingo-MC/"],["Semillas","https://discohikory.github.io/Semillas/"],["Fanarts","https://discohikory.github.io/Fanarts/"]];
 document.getElementById('projLinks').innerHTML=PROJS.map(p=>`<div><h3 style="margin:6px 0">${p[0]}</h3><div class="rowbtns"><a class="btn" href="${p[1]}">Abrir ↗</a></div></div>`).join('');
 const SYS_BASE=`Eres Disco AI, asistente virtual de Discohikorybrs (Daniel Esteban Vera Fernandez), Staff y Developer de Minecraft y Discord de Colombia, con más de 4 años desde 2021. DATOS: 2021 LatamMC (Soporte→Moderador→CEO). 2022-2024 Developer. 2025 SpaceMain SMP, [ZX] Studios, TurtleNetwork. 2025-2026 VoidCraft/MineSnake (Founder + Lead Developer, servidor semianárquico). 2026 SkyLith Network (Moderador, activo). PROYECTOS: Portfolio https://discohikory.github.io/Portafolio/ · Staff Toolkit https://discohikory.github.io/Staff-Toolkit/ · Wiki https://discohikory.github.io/Wiki-Comandos/ · Quiz https://discohikory.github.io/Quiz-Staff/ · Status https://discohikory.github.io/Server-Status/ · Guía https://discohikory.github.io/Guia-Encantamientos/ · Crónicas https://discohikory.github.io/Cronicas/ · Comunidad https://discohikory.github.io/Comunidad/ · PlayerCards https://discohikory.github.io/PlayerCards/ · Radio https://discohikory.github.io/Radio-Gamer/ · Starter Pack https://discohikory.github.io/Starter-Pack/ · Aldeano IA https://discohikory.github.io/Aldeano-IA/. CONTACTO: Discord @discohikoryepb (ID 1472738833018917028), abierto a proyectos serios. REGLAS: español neutro, máximo 100 palabras, amable, usa los datos tal cual. Si preguntan algo fuera de tema responde igual con buena onda. Si no sabes algo, dilo y sugiere contactarlo.`;
 const SYS_MODES={
@@ -167,8 +174,14 @@ function speak(t){
   }catch(e){}
 }
 chatBox.addEventListener('click',e=>{
-  const b=e.target.closest?e.target.closest('[data-say],[data-cp]'):null;
+  const b=e.target.closest?e.target.closest('[data-say],[data-cp],[data-retry]'):null;
   if(!b)return;
+  if(b.hasAttribute('data-retry')){
+    const box=b.closest('.msg');
+    const p=box&&box.dataset.imgp;
+    if(p)genImage(p);
+    return;
+  }
   const box=b.closest('.msg');
   const txt=(box&&box.dataset.txt)||(box?box.innerText:"");
   if(b.hasAttribute('data-say')){speak(txt);return}
@@ -178,17 +191,32 @@ chatBox.addEventListener('click',e=>{
 function botHTML(text,via){
   return fmtAI(text)+`<span class="via">Vía ${via} 🤖</span><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
 }
-function genImage(p){
-  if(!p){addMsg('Describe la imagen tras /img 🖼️','bot');return}
-  const seed=Math.floor(Math.random()*999999);
-  const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=768&height=768&nologo=true&seed=${seed}`;
+function genImage(p,seed){
+  if(!p){addMsg('Describe la imagen tras /img 🖼️ (prueba: /img castillo flotante de noche)','bot');return}
+  const style=(document.getElementById('imgStyle')||{}).value||'pixel art estilo Minecraft';
+  const full=`${p}, ${style}, alta calidad, detallado`;
+  seed=seed||Math.floor(Math.random()*999999);
+  const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(full)}?width=768&height=768&nologo=true&private=true&seed=${seed}&model=flux`;
   const d=document.createElement('div');d.className='msg bot';
   d.dataset.txt='[imagen generada: '+p+']';
+  d.dataset.imgp=p;
   d.innerHTML=`🖼️ Generando <i>${p.replace(/</g,"&lt;")}</i>… ⏳<br><img data-img style="max-width:100%;border-radius:10px;margin-top:8px;opacity:.4" alt="imagen generada">`;
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
   const im=d.querySelector('[data-img]');
-  im.onload=()=>{im.style.opacity='1';const a=document.createElement('a');a.href=url;a.download='disco-ai.png';a.textContent='⬇️ Descargar';a.className='btn';a.style.cssText='display:inline-block;margin-top:8px;font-size:12px;padding:8px 14px';d.appendChild(a);hist.push('Disco AI: [imagen: '+p+']')};
-  im.onerror=()=>{d.innerHTML+='<br>⚠️ No se pudo generar. Intenta otra descripción.'};
+  im.onload=()=>{
+    im.style.opacity='1';
+    const row=document.createElement('div');row.className='rowbtns';
+    row.innerHTML=`<a class="btn" style="font-size:12px;padding:8px 14px;text-decoration:none" href="${url}" download="disco-ai.png">⬇️ Descargar</a><button type="button" class="btn" style="font-size:12px;padding:8px 14px" data-retry>🔄 Otra versión</button>`;
+    d.appendChild(row);
+    hist.push('Disco AI: [imagen: '+p+']');
+  };
+  im.onerror=()=>{
+    const w=document.createElement('div');w.className='rowbtns';
+    w.innerHTML=`<button type="button" class="btn" data-retry>🔄 Reintentar</button>`;
+    d.appendChild(w);
+    const w2=document.createElement('div');w2.textContent='⚠️ No se pudo generar. Prueba otra descripción.';
+    d.appendChild(w2);
+  };
   im.src=url;
 }
 async function wikiLook(topic){
