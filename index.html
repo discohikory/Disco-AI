@@ -39,6 +39,9 @@ main{max-width:900px;margin:auto;padding:24px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .chip{padding:7px 14px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.03);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer}
 .chip:hover{color:#fff;border-color:var(--a)}
+.chip.on{color:#fff;border-color:var(--a);box-shadow:0 0 14px rgba(139,92,246,.4)}
+pre.codeblock{position:relative;white-space:pre-wrap;background:#05050f;border:1px solid rgba(139,92,246,.4);border-radius:10px;padding:14px 12px 12px;font-size:12.5px;font-family:monospace;overflow-x:auto;margin:8px 0}
+pre.codeblock .copycode{position:absolute;top:6px;right:6px;font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff;cursor:pointer}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .btn{padding:11px 20px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.04);cursor:pointer}
 .primary{background:linear-gradient(#9d6bff,#6d28d9);border:2px solid #141414;border-radius:4px}
@@ -69,6 +72,12 @@ footer strong{color:#fff}
     <p class="lead">Conozco la historia, proyectos y contacto de Discohikorybrs. Pregunta sin pena.</p>
   </div>
   <div class="card glass">
+    <div class="chips" id="modeChips" style="margin:0 0 10px">
+      <button class="chip on" data-mode="asistente">🎤 Asistente</button>
+      <button class="chip" data-mode="dev">💻 Programador</button>
+      <button class="chip" data-mode="builder">🔧 Constructor</button>
+      <select id="modelSel" style="margin-left:auto;max-width:170px"><option value="">Modelo: auto</option><option value="gpt-4o-mini">rápido</option><option value="gpt-4o">GPT-4o (top)</option></select>
+    </div>
     <div class="chat" id="chatBox">
       <div class="msg bot">¡Hola! Soy <b>Disco AI</b> 🤖 Pregúntame por la experiencia, proyectos o contacto de Discohikorybrs.</div>
     </div>
@@ -92,12 +101,23 @@ footer strong{color:#fff}
 <script>
 const PROJS=[["Portfolio principal","https://discohikory.github.io/Portafolio/"],["Staff Toolkit","https://discohikory.github.io/Staff-Toolkit/"],["Wiki de Comandos","https://discohikory.github.io/Wiki-Comandos/"],["Quiz Staff","https://discohikory.github.io/Quiz-Staff/"],["Status en vivo","https://discohikory.github.io/Server-Status/"],["Guía de Encantamientos","https://discohikory.github.io/Guia-Encantamientos/"],["Crónicas del Staff","https://discohikory.github.io/Cronicas/"],["Centro de comunidad","https://discohikory.github.io/Comunidad/"],["PlayerCards","https://discohikory.github.io/PlayerCards/"],["Radio Gamer","https://discohikory.github.io/Radio-Gamer/"],["Starter Pack","https://discohikory.github.io/Starter-Pack/"],["Aldeano IA","https://discohikory.github.io/Aldeano-IA/"]];
 document.getElementById('projLinks').innerHTML=PROJS.map(p=>`<div><h3 style="margin:6px 0">${p[0]}</h3><div class="rowbtns"><a class="btn" href="${p[1]}">Abrir ↗</a></div></div>`).join('');
-const SYS=`Eres Disco AI, asistente virtual de Discohikorybrs (Daniel Esteban Vera Fernandez), Staff y Developer de Minecraft y Discord de Colombia, con más de 4 años desde 2021. DATOS: 2021 LatamMC (Soporte→Moderador→CEO). 2022-2024 Developer. 2025 SpaceMain SMP, [ZX] Studios, TurtleNetwork. 2025-2026 VoidCraft/MineSnake (Founder + Lead Developer, servidor semianárquico). 2026 SkyLith Network (Moderador, activo). PROYECTOS: Portfolio https://discohikory.github.io/Portafolio/ · Staff Toolkit https://discohikory.github.io/Staff-Toolkit/ · Wiki https://discohikory.github.io/Wiki-Comandos/ · Quiz https://discohikory.github.io/Quiz-Staff/ · Status https://discohikory.github.io/Server-Status/ · Guía https://discohikory.github.io/Guia-Encantamientos/ · Crónicas https://discohikory.github.io/Cronicas/ · Comunidad https://discohikory.github.io/Comunidad/ · PlayerCards https://discohikory.github.io/PlayerCards/ · Radio https://discohikory.github.io/Radio-Gamer/ · Starter Pack https://discohikory.github.io/Starter-Pack/ · Aldeano IA https://discohikory.github.io/Aldeano-IA/. CONTACTO: Discord @discohikoryepb (ID 1472738833018917028), abierto a proyectos serios. REGLAS: español neutro, máximo 100 palabras, amable, usa los datos tal cual. Si preguntan algo fuera de tema responde igual con buena onda. Si no sabes algo, dilo y sugiere contactarlo.`;
+const SYS_BASE=`Eres Disco AI, asistente virtual de Discohikorybrs (Daniel Esteban Vera Fernandez), Staff y Developer de Minecraft y Discord de Colombia, con más de 4 años desde 2021. DATOS: 2021 LatamMC (Soporte→Moderador→CEO). 2022-2024 Developer. 2025 SpaceMain SMP, [ZX] Studios, TurtleNetwork. 2025-2026 VoidCraft/MineSnake (Founder + Lead Developer, servidor semianárquico). 2026 SkyLith Network (Moderador, activo). PROYECTOS: Portfolio https://discohikory.github.io/Portafolio/ · Staff Toolkit https://discohikory.github.io/Staff-Toolkit/ · Wiki https://discohikory.github.io/Wiki-Comandos/ · Quiz https://discohikory.github.io/Quiz-Staff/ · Status https://discohikory.github.io/Server-Status/ · Guía https://discohikory.github.io/Guia-Encantamientos/ · Crónicas https://discohikory.github.io/Cronicas/ · Comunidad https://discohikory.github.io/Comunidad/ · PlayerCards https://discohikory.github.io/PlayerCards/ · Radio https://discohikory.github.io/Radio-Gamer/ · Starter Pack https://discohikory.github.io/Starter-Pack/ · Aldeano IA https://discohikory.github.io/Aldeano-IA/. CONTACTO: Discord @discohikoryepb (ID 1472738833018917028), abierto a proyectos serios. REGLAS: español neutro, máximo 100 palabras, amable, usa los datos tal cual. Si preguntan algo fuera de tema responde igual con buena onda. Si no sabes algo, dilo y sugiere contactarlo.`;
+const SYS_MODES={
+ asistente:SYS_BASE+` REGLAS: español neutro, máximo 100 palabras, amable.`,
+ dev:`Eres Disco Dev, programador senior (Java, JavaScript, Python, HTML/CSS, configs YAML/JSON, plugins Minecraft, bots Discord). Respondes en español neutro: código SIEMPRE en bloques de triple comilla con lenguaje, explicación breve y directa, máximo 350 palabras. Si falta información, asume lo estándar y avísalo.`,
+ builder:`Eres Disco Builder: generas archivos y código listos para pegar (HTML, comandos Minecraft, LuckPerms, configs, embeds Discord). Entrega el código en bloques de triple comilla y solo 2 líneas de explicación. Máximo 400 palabras, español neutro.`
+};
+let curMode="asistente";
+document.querySelectorAll('#modeChips [data-mode]').forEach(b=>b.addEventListener('click',()=>{
+  curMode=b.dataset.mode;
+  document.querySelectorAll('#modeChips [data-mode]').forEach(x=>x.classList.toggle('on',x===b));
+  addMsg(`Modo <b>${b.textContent}</b> activado. ¿Qué construimos?`,'bot');
+}));
 const chatBox=document.getElementById('chatBox'),chatIn=document.getElementById('chatIn');
 let hist=[];
 function aiExtract(r){if(!r)return"";if(typeof r==="string")return r;const m=r.message&&r.message.content;if(typeof m==="string")return m;if(Array.isArray(m))return m.map(p=>typeof p==="string"?p:(p.text||"")).join("");return r.text||r.output||""}
-async function aiChat(prompt){
-  try{if(window.puter&&puter.ai&&puter.ai.chat){const t=aiExtract(await puter.ai.chat(prompt));if(t&&t.trim())return{text:t.trim(),via:"Puter.js"}}}catch(e){console.warn(e)}
+async function aiChat(prompt,model){
+  try{if(window.puter&&puter.ai&&puter.ai.chat){const t=aiExtract(await puter.ai.chat(prompt,model?{model}:undefined));if(t&&t.trim())return{text:t.trim(),via:"Puter.js"+(model?" ("+model+")":"")}}}catch(e){console.warn(e)}
   const res=await fetch("https://text.pollinations.ai/"+encodeURIComponent(prompt));
   if(!res.ok)throw new Error("HTTP "+res.status);
   const t=(await res.text()).trim();if(!t)throw new Error("vacío");
@@ -108,14 +128,39 @@ function addMsg(html,cls){
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;return d;
 }
 function escT(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML.replace(/\n/g,"<br>")}
+function fmtAI(t){
+  const escS=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+  const parts=t.split(/```(\w*)\n?/);
+  let html='';
+  for(let i=0;i<parts.length;i++){
+    if(i%3===0){html+=escS(parts[i]).replace(/\n/g,"<br>")}
+    else if(i%3===2){
+      const code=parts[i].replace(/\n$/,'');
+      const id='c'+Math.random().toString(36).slice(2,8);
+      html+=`<pre class="codeblock"><button type="button" class="copycode" data-cc="${id}">Copiar</button><code id="${id}">${escS(code)}</code></pre>`;
+    }
+  }
+  return html;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest?e.target.closest('[data-cc]'):null;
+  if(!b)return;
+  const el=document.getElementById(b.dataset.cc);
+  if(!el)return;
+  const done=()=>{b.textContent='✅';setTimeout(()=>{b.textContent='Copiar'},1500)};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(el.textContent).then(done).catch(()=>done())}
+  else{const ta=document.createElement('textarea');ta.value=el.textContent;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove();done()}
+});
 async function ask(q){
   addMsg(escT(q),'user');chatIn.value='';
   const typing=document.createElement('div');typing.className='msg bot typing';typing.innerHTML='<i></i><i></i><i></i>';
   chatBox.appendChild(typing);chatBox.scrollTop=chatBox.scrollHeight;
   hist.push("Usuario: "+q);
+  const model=document.getElementById('modelSel').value||"";
   try{
-    const r=await aiChat(SYS+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q);
-    typing.outerHTML=`<div class="msg bot">${escT(r.text)}<span class="via">Vía ${r.via} 🤖</span></div>`;
+    const r=await aiChat(SYS_MODES[curMode]+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+    const d=document.createElement('div');d.className='msg bot';d.innerHTML=fmtAI(r.text)+`<span class="via">Vía ${r.via} 🤖</span>`;
+    typing.replaceWith(d);
     chatBox.scrollTop=chatBox.scrollHeight;
     hist.push("Disco AI: "+r.text);
   }catch(e){typing.outerHTML=`<div class="msg err">No respondo ahora (límite o conexión). Intenta luego. ⚠️</div>`}
