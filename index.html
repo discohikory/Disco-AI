@@ -6,7 +6,7 @@
 <link rel="dns-prefetch" href="https://fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Crect%20width%3D%2764%27%20height%3D%2764%27%20rx%3D%2714%27%20fill%3D%27%230b0b1c%27%2F%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2724%27%20fill%3D%27none%27%20stroke%3D%27%238b5cf6%27%20stroke-width%3D%275%27%2F%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2715%27%20fill%3D%27%238b5cf6%27%2F%3E%3Ccircle%20cx%3D%2726%27%20cy%3D%2728%27%20r%3D%274%27%20fill%3D%27%23fff%27%2F%3E%3Ccircle%20cx%3D%2738%27%20cy%3D%2728%27%20r%3D%274%27%20fill%3D%27%23fff%27%2F%3E%3C%2Fsvg%3E">
 <meta name="description" content="Disco AI: asistente virtual de Discohikorybrs. Pregúntale por su experiencia, proyectos y contacto.">
 <title>Disco AI — Discohikorybrs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,7 +78,7 @@ footer strong{color:#fff}
 </header>
 <main>
   <div class="hero-t">
-    <div class="orb">🤖</div>
+    <div class="orb"><svg width="64" height="64" viewBox="0 0 64 64"><defs><radialGradient id="DGa" cx="35%" cy="30%"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="45%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#1e1b4b"/></radialGradient><linearGradient id="DRa" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset=".5" stop-color="#22d3ee"/><stop offset="1" stop-color="#d946ef"/></linearGradient></defs><circle cx="32" cy="32" r="28" fill="none" stroke="url(#DRa)" stroke-width="4"/><circle cx="32" cy="32" r="19" fill="url(#DGa)"/><circle cx="26" cy="26" r="6" fill="#fff" opacity=".85"/><circle cx="40" cy="26" r="6" fill="#fff" opacity=".85"/><circle cx="26" cy="26" r="2.6" fill="#1e1b4b"/><circle cx="40" cy="26" r="2.6" fill="#1e1b4b"/><rect x="24" y="40" width="16" height="3" rx="1.5" fill="#22d3ee"/><circle cx="32" cy="6" r="2.5" fill="#22d3ee"/><circle cx="56" cy="44" r="2.5" fill="#d946ef"/><circle cx="8" cy="44" r="2.5" fill="#8b5cf6"/></svg></div>
     <h1>Disco AI</h1>
     <p class="eyebrow">PREGÚNTAME LO QUE SEA</p>
     <p class="lead">Conozco la historia, proyectos y contacto de Discohikorybrs. Genero imágenes (/img), consulto Wikipedia (/wiki) y leo en voz alta. Pregunta sin pena.</p>
@@ -201,28 +201,36 @@ function botHTML(text,via){
 }
 function genImage(p,seed){
   if(!p){addMsg('Describe la imagen tras /img 🖼️ (prueba: /img castillo flotante de noche)','bot');return}
+  const style=(document.getElementById('imgStyle')||{}).value||'pixel art estilo Minecraft';
   const STYLES={
     "pixel art estilo Minecraft":"Arte pixel-art estilo Minecraft, voxels cúbicos, paleta del juego",
     "realista detallado":"Foto realista muy detallada, iluminación cinematográfica",
     "anime":"Estilo anime vibrante, líneas limpias",
     "logo minimalista de videojuegos":"Logo minimalista de videojuegos, fondo simple y plano"
   };
-  const styleKey=(document.getElementById('imgStyle')||{}).value||'pixel art estilo Minecraft';
-  const full=`${STYLES[styleKey]||styleKey}: ${p}. Alta calidad, muy detallado`;
-  seed=seed||Math.floor(Math.random()*999999);
-  const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(full)}?width=768&height=768&nologo=true&private=true&seed=${seed}&model=flux`;
   const d=document.createElement('div');d.className='msg bot';
   d.dataset.txt='[imagen generada: '+p+']';
   d.dataset.imgp=p;
-  d.innerHTML=`🖼️ Generando <i>${p.replace(/</g,"&lt;")}</i>… ⏳<br><img data-img style="max-width:100%;border-radius:10px;margin-top:8px;opacity:.4" alt="imagen generada">`;
+  d.innerHTML=`🖼️ Mejorando idea… ✨`;
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
+  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas): ${p}`).then(r=>{
+    buildImg(d,r.text);
+  }).catch(()=>{
+    buildImg(d,`${p}, ${(STYLES[style]||style).toLowerCase()}, highly detailed`);
+  });
+}
+function buildImg(d,prompt){
+  seed=Math.floor(Math.random()*999999);
+  const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&nologo=true&private=true&seed=${seed}&model=flux`;
+  d.innerHTML=`🖼️ Generando… ⏳<br><img data-img style="max-width:100%;border-radius:10px;margin-top:8px;opacity:.4" alt="imagen generada">`;
+  chatBox.scrollTop=chatBox.scrollHeight;
   const im=d.querySelector('[data-img]');
   im.onload=()=>{
     im.style.opacity='1';
     const row=document.createElement('div');row.className='rowbtns';
     row.innerHTML=`<a class="btn" style="font-size:12px;padding:8px 14px;text-decoration:none" href="${url}" download="disco-ai.png">⬇️ Descargar</a><button type="button" class="btn" style="font-size:12px;padding:8px 14px" data-retry>🔄 Otra versión</button>`;
     d.appendChild(row);
-    hist.push('Disco AI: [imagen: '+p+']');
+    hist.push('Disco AI: [imagen generada]');
   };
   im.onerror=()=>{
     const w=document.createElement('div');w.className='rowbtns';
@@ -235,17 +243,32 @@ function genImage(p,seed){
 }
 async function wikiLook(topic){
   if(!topic){addMsg('Escribe /wiki seguido del tema. 📚','bot');return}
-  const d=document.createElement('div');d.className='msg bot';d.textContent='Buscando en Wikipedia… ⏳';
+  const d=document.createElement('div');d.className='msg bot';d.textContent='Leyendo Wikipedia a fondo… ⏳';
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
+  const link='https://es.wikipedia.org/wiki/'+encodeURIComponent(topic.replace(/ /g,'_'));
   try{
-    const r=await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(topic));
+    const r=await fetch('https://es.wikipedia.org/w/api.php?action=query&prop=extracts|pageimages&explaintext&pithumbsize=500&redirects=1&titles='+encodeURIComponent(topic)+'&format=json&origin=*');
     if(!r.ok)throw 0;
     const j=await r.json();
-    const link='https://es.wikipedia.org/wiki/'+encodeURIComponent(topic.replace(/ /g,'_'));
-    d.dataset.txt=(j.title||topic)+': '+(j.extract||'Sin resumen.');
-    d.innerHTML=`<b>${d.dataset.txt.split(':')[0]}</b><br>${j.extract||'Sin resumen.'}${j.thumbnail?`<br><img src="${j.thumbnail.source}" style="max-width:100%;border-radius:8px;margin-top:8px">`:''}<br><a href="${link}" target="_blank" rel="noopener" style="color:#b39aff">Leer más ↗</a><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
+    const pages=j.query&&j.query.pages?Object.values(j.query.pages):[];
+    const pg=pages.find(p=>!p.missing);
+    if(!pg||!pg.extract)throw 0;
+    const full=pg.extract.slice(0,4000);
+    const thumb=pg.thumbnail&&pg.thumbnail.source;
+    const s=await aiChat(`Resume esto de Wikipedia en español neutro (máximo 150 palabras, con lo esencial y 1 dato curioso; NO inventes nada fuera del texto):\n\n${full}`);
+    d.dataset.txt=s.text;
+    d.innerHTML=`<b>${pg.title.replace(/</g,"&lt;")}</b><br>${s.text.replace(/</g,"&lt;").replace(/\n/g,"<br>")}${thumb?`<br><img src="${thumb}" style="max-width:100%;border-radius:8px;margin-top:8px">`:''}<br><a href="${link}" target="_blank" rel="noopener" style="color:#b39aff">Leer más ↗</a> <small class="muted">· Vía ${s.via} 🤖</small><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
     hist.push('Disco AI: [wiki '+topic+']');
-  }catch(e){d.textContent='No encontré eso en Wikipedia. Prueba otro término. 📚'}
+  }catch(e){
+    try{
+      const r2=await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(topic));
+      if(!r2.ok)throw 0;
+      const j2=await r2.json();
+      d.dataset.txt=(j2.title||topic)+': '+(j2.extract||'Sin resumen.');
+      d.innerHTML=`<b>${(j2.title||topic).replace(/</g,"&lt;")}</b><br>${(j2.extract||'Sin resumen.').replace(/</g,"&lt;")}<br><a href="${link}" target="_blank" rel="noopener" style="color:#b39aff">Leer más ↗</a><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
+      hist.push('Disco AI: [wiki '+topic+']');
+    }catch(e2){d.textContent='No encontré eso en Wikipedia. Prueba otro término. 📚'}
+  }
 }
 document.getElementById('chatExport').addEventListener('click',()=>{
   const txt=hist.join('\n')||'Sin conversación.';
