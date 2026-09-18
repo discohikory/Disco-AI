@@ -88,7 +88,7 @@ footer strong{color:#fff}
       <button class="chip on" data-mode="asistente">🎤 Asistente</button>
       <button class="chip" data-mode="dev">💻 Programador</button>
       <button class="chip" data-mode="builder">🔧 Constructor</button>
-      <select id="modelSel" style="margin-left:auto;max-width:170px"><option value="">Modelo: auto</option><option value="gpt-4o-mini">rápido</option><option value="gpt-4o">GPT-4o (top)</option></select>
+      <select id="modelSel" style="margin-left:auto;max-width:190px"><option value="">Modelo: auto</option><option value="gpt-4o">GPT-4o (top)</option><option value="gpt-4o-mini">GPT-4o mini (rápido)</option><option value="claude-3-5-sonnet">Claude (análisis)</option></select>
     </div>
     <div class="chat" id="chatBox">
       <div class="msg bot">¡Hola! Soy <b>Disco AI</b> 🤖 Pregúntame por la experiencia, proyectos o contacto de Discohikorybrs.</div>
@@ -98,8 +98,9 @@ footer strong{color:#fff}
       <button class="chip" data-q="¿Cuál es su experiencia como Staff?">Experiencia</button>
       <button class="chip" data-q="¿Qué proyectos tiene?">Proyectos</button>
       <button class="chip" data-q="¿Cómo lo contacto para mi servidor?">Contacto</button>
+      <button class="chip" data-q="/img un castillo flotante de noche estilo Minecraft">🎲 Imagen sorpresa</button>
     </div>
-    <div class="rowbtns"><select id="imgStyle"><option value="pixel art estilo Minecraft">🎮 Pixel-art MC</option><option value="realista detallado">📷 Realista</option><option value="anime">⛩️ Anime</option><option value="logo minimalista de videojuegos">🔰 Logo</option></select></div>
+    <div class="rowbtns"><select id="imgStyle"><option value="pixel art estilo Minecraft">🎮 Pixel-art MC</option><option value="realista detallado">📷 Realista</option><option value="anime">⛩️ Anime</option><option value="logo minimalista de videojuegos">🔰 Logo</option></select><select id="imgModel" style="max-width:230px"><option value="gemini-2.5-flash-image-preview">🖼️ Nano Banana (recomendada)</option><option value="gpt-image-1.5">🏆 GPT Image (top)</option><option value="black-forest-labs/FLUX.1-schnell">⚡ FLUX rápido</option><option value="stabilityai/stable-diffusion-3-medium">🎨 Stable Diffusion 3</option></select></div>
     <div class="chatbar"><input id="chatIn" maxlength="300" placeholder="Pregunta, /wiki tema o /img idea…"><button class="btn" id="attachBtn" type="button" title="Adjuntar foto">📎</button><button class="btn" id="camBtn" type="button" title="Tomar foto">📷</button><button class="btn" id="micBtn" type="button" title="Hablar">🎙️</button><button class="btn primary" id="chatGo" type="button">Enviar</button></div>
     <input type="file" id="fileIn" accept="image/*" style="display:none">
     <div id="imgPrev" style="display:none;align-items:center;gap:8px;margin-top:8px"><img id="imgThumb" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" alt="adjunto"><small class="muted">Imagen lista para enviar.</small><button type="button" class="btn" id="imgX" style="padding:4px 10px">✕</button></div>
@@ -138,7 +139,17 @@ const chatBox=document.getElementById('chatBox'),chatIn=document.getElementById(
 let hist=[];
 function aiExtract(r){if(!r)return"";if(typeof r==="string")return r;const m=r.message&&r.message.content;if(typeof m==="string")return m;if(Array.isArray(m))return m.map(p=>typeof p==="string"?p:(p.text||"")).join("");return r.text||r.output||""}
 async function aiChat(prompt,model){
-  try{if(window.puter&&puter.ai&&puter.ai.chat){const t=aiExtract(await puter.ai.chat(prompt,model?{model}:undefined));if(t&&t.trim())return{text:t.trim(),via:"Puter.js"+(model?" ("+model+")":"")}}}catch(e){console.warn(e)}
+  const seq=[];
+  if(model)seq.push(model);
+  ["gpt-4o","gpt-4o-mini","claude-3-5-sonnet"].forEach(m=>{if(!seq.includes(m))seq.push(m)});
+  for(const m of seq){
+    try{
+      if(window.puter&&puter.ai&&puter.ai.chat){
+        const t=aiExtract(await puter.ai.chat(prompt,{model:m}));
+        if(t&&t.trim())return{text:t.trim(),via:"Puter.js ("+m+")"};
+      }
+    }catch(e){console.warn("modelo "+m+" falló, siguiente…")}
+  }
   const res=await fetch("https://text.pollinations.ai/"+encodeURIComponent(prompt));
   if(!res.ok)throw new Error("HTTP "+res.status);
   const t=(await res.text()).trim();if(!t)throw new Error("vacío");
@@ -179,11 +190,18 @@ function cleanMD(t){
     .replace(/^#{1,6}\s+/gm,"")
     .replace(/^\s*[-*]\s+/gm,"• ");
 }
-function speak(t){
+async function speak(t){
+  const txt=String(t).slice(0,400);
   try{
-    if(!('speechSynthesis' in window)){alert('Tu navegador no tiene voz.');return}
+    if(window.puter&&puter.ai&&puter.ai.txt2speech){
+      const a=await puter.ai.txt2speech(txt);
+      if(a&&a.play){a.play();return}
+    }
+  }catch(e){console.warn(e)}
+  try{
+    if(!('speechSynthesis' in window)){alert('Sin voz disponible.');return}
     speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(String(t).slice(0,400));
+    const u=new SpeechSynthesisUtterance(txt);
     u.lang='es-ES';u.rate=1;
     speechSynthesis.speak(u);
   }catch(e){}
@@ -220,7 +238,24 @@ function genImage(p,seed){
   d.dataset.imgp=p;
   d.innerHTML=`🖼️ Mejorando idea… ✨`;
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
-  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas): ${p}`).then(r=>{
+  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas): ${p}`).then(async r=>{
+    const model=(document.getElementById('imgModel')||{}).value||'gemini-2.5-flash-image-preview';
+    try{
+      if(window.puter&&puter.ai&&puter.ai.txt2img){
+        d.innerHTML=`🖼️ Generando con ${model.split('/').pop()}… ⏳`;
+        const im=await puter.ai.txt2img(r.text,{model});
+        im.style.cssText='max-width:100%;border-radius:10px;margin-top:8px';
+        d.innerHTML='';d.appendChild(im);
+        const row=document.createElement('div');row.className='rowbtns';
+        const dl=document.createElement('a');dl.textContent='⬇️ Descargar';dl.className='btn';dl.style.cssText='font-size:12px;padding:8px 14px;text-decoration:none';
+        try{dl.href=im.currentSrc||im.src;dl.download='disco-ai.png'}catch(e2){dl.removeAttribute('href')}
+        const rb=document.createElement('button');rb.type='button';rb.className='btn';rb.style.cssText='font-size:12px;padding:8px 14px';rb.setAttribute('data-retry','');rb.textContent='🔄 Otra versión';
+        row.appendChild(dl);row.appendChild(rb);d.appendChild(row);
+        hist.push('Disco AI: [imagen: '+p+' vía '+model+']');
+        return;
+      }
+      throw 0;
+    }catch(e){console.warn('puter img falló, usando respaldo…')}
     buildImg(d,r.text);
   }).catch(()=>{
     buildImg(d,`${p}, ${(STYLES[style]||style).toLowerCase()}, highly detailed`);
@@ -229,7 +264,7 @@ function genImage(p,seed){
 function buildImg(d,prompt){
   seed=Math.floor(Math.random()*999999);
   const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&private=true&seed=${seed}&model=flux&enhance=true`;
-  d.innerHTML=`🖼️ Generando… ⏳<br><img data-img style="max-width:100%;border-radius:10px;margin-top:8px;opacity:.4" alt="imagen generada">`;
+  d.innerHTML=`🖼️ Generando (flux respaldo)… ⏳<br><img data-img style="max-width:100%;border-radius:10px;margin-top:8px;opacity:.4" alt="imagen generada">`;
   chatBox.scrollTop=chatBox.scrollHeight;
   const im=d.querySelector('[data-img]');
   im.onload=()=>{
