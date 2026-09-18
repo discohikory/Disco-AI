@@ -124,7 +124,7 @@ const PROJS=[["Portfolio principal","https://discohikory.github.io/Portafolio/"]
 document.getElementById('projLinks').innerHTML=PROJS.map(p=>`<div><h3 style="margin:6px 0">${p[0]}</h3><div class="rowbtns"><a class="btn" href="${p[1]}">Abrir ↗</a></div></div>`).join('');
 const SYS_BASE=`Eres Disco AI, asistente virtual de Discohikorybrs (Daniel Esteban Vera Fernandez), Staff y Developer de Minecraft y Discord de Colombia, con más de 4 años desde 2021. DATOS: 2021 LatamMC (Soporte→Moderador→CEO). 2022-2024 Developer. 2025 SpaceMain SMP, [ZX] Studios, TurtleNetwork. 2025-2026 VoidCraft/MineSnake (Founder + Lead Developer, servidor semianárquico). 2026 SkyLith Network (Moderador, activo). PROYECTOS: Portfolio https://discohikory.github.io/Portafolio/ · Staff Toolkit https://discohikory.github.io/Staff-Toolkit/ · Wiki https://discohikory.github.io/Wiki-Comandos/ · Quiz https://discohikory.github.io/Quiz-Staff/ · Status https://discohikory.github.io/Server-Status/ · Guía https://discohikory.github.io/Guia-Encantamientos/ · Crónicas https://discohikory.github.io/Cronicas/ · Comunidad https://discohikory.github.io/Comunidad/ · PlayerCards https://discohikory.github.io/PlayerCards/ · Radio https://discohikory.github.io/Radio-Gamer/ · Starter Pack https://discohikory.github.io/Starter-Pack/ · Aldeano IA https://discohikory.github.io/Aldeano-IA/. CONTACTO: Discord @discohikoryepb (ID 1472738833018917028), abierto a proyectos serios. REGLAS: español neutro, máximo 100 palabras, amable, usa los datos tal cual. Si preguntan algo fuera de tema responde igual con buena onda. Si no sabes algo, dilo y sugiere contactarlo.`;
 const SYS_MODES={
- asistente:SYS_BASE+` REGLAS: español neutro, máximo 100 palabras, amable.`,
+ asistente:SYS_BASE+` REGLAS: español neutro, máximo 100 palabras, amable. PROHIBIDO usar asteriscos, almohadillas o formato markdown: responde siempre en texto plano.`,
  dev:`Eres Disco Dev, programador senior (Java, JavaScript, Python, HTML/CSS, configs YAML/JSON, plugins Minecraft, bots Discord). Respondes en español neutro: código SIEMPRE en bloques de triple comilla con lenguaje, explicación breve y directa, máximo 350 palabras. Si falta información, asume lo estándar y avísalo.`,
  builder:`Eres Disco Builder: generas archivos y código listos para pegar (HTML, comandos Minecraft, LuckPerms, configs, embeds Discord). Entrega el código en bloques de triple comilla y solo 2 líneas de explicación. Máximo 400 palabras, español neutro.`
 };
@@ -172,6 +172,13 @@ document.addEventListener('click',e=>{
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(el.textContent).then(done).catch(()=>done())}
   else{const ta=document.createElement('textarea');ta.value=el.textContent;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove();done()}
 });
+function cleanMD(t){
+  return String(t)
+    .replace(/\*\*(.*?)\*\*/g,"$1")
+    .replace(/__(.*?)__/g,"$1")
+    .replace(/^#{1,6}\s+/gm,"")
+    .replace(/^\s*[-*]\s+/gm,"• ");
+}
 function speak(t){
   try{
     if(!('speechSynthesis' in window)){alert('Tu navegador no tiene voz.');return}
@@ -203,10 +210,10 @@ function genImage(p,seed){
   if(!p){addMsg('Describe la imagen tras /img 🖼️ (prueba: /img castillo flotante de noche)','bot');return}
   const style=(document.getElementById('imgStyle')||{}).value||'pixel art estilo Minecraft';
   const STYLES={
-    "pixel art estilo Minecraft":"Arte pixel-art estilo Minecraft, voxels cúbicos, paleta del juego",
-    "realista detallado":"Foto realista muy detallada, iluminación cinematográfica",
-    "anime":"Estilo anime vibrante, líneas limpias",
-    "logo minimalista de videojuegos":"Logo minimalista de videojuegos, fondo simple y plano"
+    "pixel art estilo Minecraft":"Arte pixel-art estilo Minecraft, voxels cúbicos perfectos, paleta del juego, bordes nítidos, sin desenfoque",
+    "realista detallado":"Foto realista ultradetallada, iluminación cinematográfica, foco nítido, 8k",
+    "anime":"Estilo anime vibrante, líneas limpias, sombreado anime clásico",
+    "logo minimalista de videojuegos":"Logo minimalista de videojuegos, vectorial, fondo simple y plano, centrado"
   };
   const d=document.createElement('div');d.className='msg bot';
   d.dataset.txt='[imagen generada: '+p+']';
@@ -385,11 +392,12 @@ async function ask(q){
       r=await aiChat(SYS_MODES[curMode]+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
     }
     const d=document.createElement('div');d.className='msg bot';
-    d.dataset.txt=r.text;
-    d.innerHTML=botHTML(r.text,r.via);
+    const shown=curMode==='asistente'?cleanMD(r.text):r.text;
+    d.dataset.txt=shown;
+    d.innerHTML=botHTML(shown,r.via);
     typing.replaceWith(d);
     chatBox.scrollTop=chatBox.scrollHeight;
-    hist.push("Disco AI: "+r.text);
+    hist.push("Disco AI: "+shown);
   }catch(e){typing.outerHTML=`<div class="msg err">No respondo ahora (límite o conexión). Intenta luego. ⚠️</div>`}
 }
 document.getElementById('chatGo').addEventListener('click',()=>{const v=chatIn.value.trim();if(v)ask(v)});
