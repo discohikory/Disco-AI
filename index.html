@@ -173,7 +173,8 @@ function applyLang(){
   try{localStorage.setItem('disco_lang',curLang)}catch(e){}
   const L=LANGS[curLang];
   document.getElementById('langSel').value=curLang;
-  chatIn.placeholder=L.ph;
+  const ci=document.getElementById('chatIn');
+  if(ci)ci.placeholder=L.ph;
 }
 document.getElementById('langSel').value=curLang;
 document.getElementById('langSel').addEventListener('change',e=>{curLang=e.target.value in LANGS?e.target.value:'es';applyLang();addMsg(LANGS[curLang].welcome,'bot')});
