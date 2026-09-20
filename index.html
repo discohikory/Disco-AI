@@ -88,7 +88,7 @@ footer strong{color:#fff}
       <button class="chip on" data-mode="asistente">🎤 Asistente</button>
       <button class="chip" data-mode="dev">💻 Programador</button>
       <button class="chip" data-mode="builder">🔧 Constructor</button>
-      <select id="modelSel" style="margin-left:auto;max-width:190px"><option value="">Modelo: auto</option><option value="gpt-4o">GPT-4o (top)</option><option value="gpt-4o-mini">GPT-4o mini (rápido)</option><option value="claude-3-5-sonnet">Claude (análisis)</option></select>
+      <select id="modelSel" style="margin-left:auto;max-width:190px"><option value="">Modelo: auto</option><option value="gpt-4o">GPT-4o (top)</option><option value="gpt-4o-mini">GPT-4o mini (rápido)</option><option value="claude-3-5-sonnet">Claude (análisis)</option><option value="gemini-2.0-flash">Gemini (rápido)</option><option value="llama-3.3-70b-versatile">Llama (open)</option></select>
     </div>
     <div class="chat" id="chatBox">
       <div class="msg bot">¡Hola! Soy <b>Disco AI</b> 🤖 Pregúntame por la experiencia, proyectos o contacto de Discohikorybrs.</div>
@@ -141,19 +141,24 @@ function aiExtract(r){if(!r)return"";if(typeof r==="string")return r;const m=r.m
 async function aiChat(prompt,model){
   const seq=[];
   if(model)seq.push(model);
-  ["gpt-4o","gpt-4o-mini","claude-3-5-sonnet"].forEach(m=>{if(!seq.includes(m))seq.push(m)});
+  ["gpt-4o","claude-3-5-sonnet","gpt-4o-mini","gemini-2.0-flash","llama-3.3-70b-versatile"].forEach(m=>{if(!seq.includes(m))seq.push(m)});
   for(const m of seq){
     try{
       if(window.puter&&puter.ai&&puter.ai.chat){
-        const t=aiExtract(await puter.ai.chat(prompt,{model:m}));
-        if(t&&t.trim())return{text:t.trim(),via:"Puter.js ("+m+")"};
+        const t=aiExtract(await puter.ai.chat(prompt,{model:m,temperature:0.6}));
+        if(t&&t.trim()&&!/^(error|invalid|unauthorized)/i.test(t.trim()))return{text:t.trim(),via:"Puter.js ("+m+")"};
       }
     }catch(e){console.warn("modelo "+m+" falló, siguiente…")}
   }
-  const res=await fetch("https://text.pollinations.ai/"+encodeURIComponent(prompt));
-  if(!res.ok)throw new Error("HTTP "+res.status);
-  const t=(await res.text()).trim();if(!t)throw new Error("vacío");
-  return{text:t,via:"Pollinations"};
+  for(const pm of ["","?model=mistral"]){
+    try{
+      const res=await fetch("https://text.pollinations.ai/"+encodeURIComponent(prompt)+pm);
+      if(!res.ok)continue;
+      const t=(await res.text()).trim();
+      if(t&&t.length>10&&!/^\s*\{?"error"/i.test(t))return{text:t,via:"Pollinations"+(pm?" (mistral)":"")};
+    }catch(e){console.warn("pollinations falló, siguiente…")}
+  }
+  throw new Error("all down");
 }
 function addMsg(html,cls){
   const d=document.createElement('div');d.className='msg '+cls;d.innerHTML=html;
@@ -207,12 +212,17 @@ async function speak(t){
   }catch(e){}
 }
 chatBox.addEventListener('click',e=>{
-  const b=e.target.closest?e.target.closest('[data-say],[data-cp],[data-retry]'):null;
+  const b=e.target.closest?e.target.closest('[data-say],[data-cp],[data-retry],[data-reg]'):null;
   if(!b)return;
   if(b.hasAttribute('data-retry')){
     const box=b.closest('.msg');
     const p=box&&box.dataset.imgp;
     if(p)genImage(p);
+    return;
+  }
+  if(b.hasAttribute('data-reg')){
+    const box=b.closest('.msg');
+    if(box)regen(box);
     return;
   }
   const box=b.closest('.msg');
@@ -222,7 +232,7 @@ chatBox.addEventListener('click',e=>{
   else{b.textContent='✅';setTimeout(()=>{b.textContent='📋'},1500)}
 });
 function botHTML(text,via){
-  return fmtAI(text)+`<span class="via">Vía ${via} 🤖</span><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
+  return fmtAI(text)+`<span class="via">Vía ${via} 🤖</span>`;
 }
 function genImage(p,seed){
   if(!p){addMsg('Describe la imagen tras /img 🖼️ (prueba: /img castillo flotante de noche)','bot');return}
@@ -401,18 +411,38 @@ async function aiVision(prompt,img){
   }catch(e){console.warn(e)}
   throw new Error("La visión necesita Puter.js: desactiva el AdBlock para js.puter.com e inténtalo de nuevo.");
 }
-async function ask(q){
+const COH="\nREGLA DE ORO: responde con coherencia total, directo al tema y sin mezclar ideas. Si algo no tiene sentido, pide aclaración en vez de inventar.";
+async function regen(box){
+  const q=box.dataset.prompt||"",model=box.dataset.model||"",img=box.dataset.img||"";
+  if(!q&&!img)return;
+  box.innerHTML='Regenerando… ⏳';
+  try{
+    let r;
+    if(img){
+      r=await aiVision("Responde en español neutro, máximo 120 palabras."+COH,img);
+    }else{
+      r=await aiChat(SYS_MODES[curMode]+COH+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+    }
+    const shown=curMode==='asistente'?cleanMD(r.text):r.text;
+    box.dataset.txt=shown;
+    box.innerHTML=botHTML(shown,r.via)+`<span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button><button type="button" data-reg>🔄 Regenerar</button></span>`;
+    chatBox.scrollTop=chatBox.scrollHeight;
+  }catch(e){box.innerHTML='No se pudo regenerar. Intenta luego. ⚠️'}
+}
+async function ask(q,regen){
   const withImg=!!pendingImg;
   const imgData=pendingImg;
   pendingImg=null;renderImgPrev();
-  const uMsg=addMsg(escT(q)+(withImg?" 📷":''),'user');
-  if(withImg){
-    const th=document.createElement('img');
-    th.src=imgData;th.style.cssText='max-width:160px;border-radius:8px;margin-top:6px';
-    uMsg.appendChild(th);chatBox.scrollTop=chatBox.scrollHeight;
+  if(!regen){
+    const uMsg=addMsg(escT(q)+(withImg?" 📷":''),'user');
+    if(withImg){
+      const th=document.createElement('img');
+      th.src=imgData;th.style.cssText='max-width:160px;border-radius:8px;margin-top:6px';
+      uMsg.appendChild(th);chatBox.scrollTop=chatBox.scrollHeight;
+    }
+    chatIn.value='';
+    hist.push("Usuario: "+q+(withImg?" [con foto]":""));
   }
-  chatIn.value='';
-  hist.push("Usuario: "+q+(withImg?" [con foto]":""));
   const low=q.toLowerCase();
   if(low.startsWith('/img '))return genImage(q.slice(5).trim());
   if(low.startsWith('/wiki '))return wikiLook(q.slice(6).trim());
@@ -422,14 +452,17 @@ async function ask(q){
   try{
     let r;
     if(withImg){
-      r=await aiVision((q||"Describe esta imagen en detalle, en español neutro.")+"\nResponde en español neutro, máximo 120 palabras.",imgData);
+      r=await aiVision((q||"Describe esta imagen en detalle, en español neutro.")+"\nResponde en español neutro, máximo 120 palabras."+COH,imgData);
     }else{
-      r=await aiChat(SYS_MODES[curMode]+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+      r=await aiChat(SYS_MODES[curMode]+COH+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
     }
     const d=document.createElement('div');d.className='msg bot';
     const shown=curMode==='asistente'?cleanMD(r.text):r.text;
     d.dataset.txt=shown;
-    d.innerHTML=botHTML(shown,r.via);
+    d.dataset.prompt=q;
+    d.dataset.model=model;
+    d.dataset.img=withImg?imgData:"";
+    d.innerHTML=botHTML(shown,r.via)+`<span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button><button type="button" data-reg>🔄 Regenerar</button></span>`;
     typing.replaceWith(d);
     chatBox.scrollTop=chatBox.scrollHeight;
     hist.push("Disco AI: "+shown);
