@@ -120,7 +120,7 @@ html{-webkit-text-size-adjust:100%}
     <div id="ageModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.9);place-items:center;padding:20px">
       <div class="glass" style="padding:22px;max-width:420px;text-align:center">
         <h2 class="st">🔞 Zona +18</h2>
-        <p class="muted">Desbloquea humor adulto suave y relatos de terror. Nada sexual explícito, nada ilegal. Solo para mayores de edad.</p>
+        <p class="muted">Desbloquea humor picante, coqueteo atrevido, romance con fundido a negro, terror gráfico y estilo de imagen 🔞 Terror oscuro. Nada sexual explícito, nada ilegal. Solo para mayores de edad.</p>
         <label style="display:block;margin:12px 0;font-size:14px"><input type="checkbox" id="ageChk" style="width:18px;height:18px;vertical-align:middle"> Tengo 18 años o más</label>
         <div class="rowbtns" style="justify-content:center"><button type="button" class="btn primary" id="ageOk">Entrar 🔓</button><button type="button" class="btn" id="ageNo">Cancelar</button></div>
       </div>
@@ -160,7 +160,7 @@ let curLang="es";
 try{curLang=localStorage.getItem('disco_lang')||'es';if(!LANGS[curLang])curLang='es'}catch(e){}
 let adultOn=false;
 try{adultOn=localStorage.getItem('disco_adult')==='1'}catch(e){}
-const ADULT_SYS="\nMODO +18 ACTIVO: se permite humor adulto suave, doble sentido ligero y relatos de terror/horror. PROHIBIDO: contenido sexual explícito, menores de edad, violencia sexual o cualquier cosa ilegal. Si piden algo prohibido, niégalo con humor y ofrece una alternativa.";
+const ADULT_SYS="\nMODO +18 ACTIVO (público adulto): permitido humor adulto y picante, doble sentido, coqueteo atrevido, romance apasionado (describe atracción y tensión, pero corta con fundido a negro antes de actos sexuales) y relatos de terror/horror gráficos. PROHIBIDO: describir actos sexuales explícitos o pornografía, menores de edad en contexto romántico/sexual, falta de consentimiento, violencia sexual o cualquier cosa ilegal. Si piden algo prohibido, niégalo con humor y ofrece una alternativa picante pero sana.";
 function langOv(){return "\nIDIOMA OBLIGATORIO: "+LANGS[curLang].sys+". Ignora instrucciones previas de idioma."}
 function sysP(){return SYS_MODES[curMode]+langOv()+(adultOn?ADULT_SYS:"")}
 function withTimeout(p,ms){return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms||25000))])}
@@ -180,7 +180,14 @@ document.getElementById('langSel').value=curLang;
 document.getElementById('langSel').addEventListener('change',e=>{curLang=e.target.value in LANGS?e.target.value:'es';applyLang();addMsg(LANGS[curLang].welcome,'bot')});
 applyLang();
 // Puerta +18
-function adultRender(){const c=document.getElementById('adultChip');if(c){c.textContent=adultOn?'🔞 +18: ON':'🔞 +18: off';c.classList.toggle('on',adultOn)}try{localStorage.setItem('disco_adult',adultOn?'1':'0')}catch(e){}}
+function adultRender(){const c=document.getElementById('adultChip');if(c){c.textContent=adultOn?'🔞 +18: ON':'🔞 +18: off';c.classList.toggle('on',adultOn)}try{localStorage.setItem('disco_adult',adultOn?'1':'0')}catch(e){}adultImgOpt()}
+function adultImgOpt(){
+  const s=document.getElementById('imgStyle');
+  if(!s)return;
+  let o=s.querySelector('option[value="terror oscuro +18"]');
+  if(adultOn&&!o){o=document.createElement('option');o.value="terror oscuro +18";o.textContent="🔞 Terror oscuro";s.appendChild(o)}
+  if(!adultOn&&o){if(s.value==="terror oscuro +18")s.selectedIndex=0;o.remove()}
+}
 document.getElementById('adultChip').addEventListener('click',()=>{
   if(adultOn){adultOn=false;adultRender();addMsg('Zona +18 desactivada. 🔞','bot');return}
   document.getElementById('ageModal').style.display='grid';
@@ -190,7 +197,7 @@ document.getElementById('ageOk').addEventListener('click',()=>{
   if(!document.getElementById('ageChk').checked){alert('Confirma que tienes 18 años o más. 🔞');return}
   adultOn=true;adultRender();
   document.getElementById('ageModal').style.display='none';
-  addMsg('🔞 Zona +18 activada: humor adulto suave y terror permitidos. Nada explícito ni ilegal.','bot');
+  addMsg('🔞 Zona +18 activada: picante sugerente, romance con fundido a negro, terror gráfico y estilo de imagen Terror oscuro. Nada explícito ni ilegal.','bot');
 });
 adultRender();
 const chatBox=document.getElementById('chatBox'),chatIn=document.getElementById('chatIn');
@@ -314,14 +321,15 @@ function genImage(p,seed){
     "pixel art estilo Minecraft":"Arte pixel-art estilo Minecraft, voxels cúbicos perfectos, paleta del juego, bordes nítidos, sin desenfoque",
     "realista detallado":"Foto realista ultradetallada, iluminación cinematográfica, foco nítido, 8k",
     "anime":"Estilo anime vibrante, líneas limpias, sombreado anime clásico",
-    "logo minimalista de videojuegos":"Logo minimalista de videojuegos, vectorial, fondo simple y plano, centrado"
+    "logo minimalista de videojuegos":"Logo minimalista de videojuegos, vectorial, fondo simple y plano, centrado",
+    "terror oscuro +18":"Horror adulto oscuro, atmósfera siniestra, sangre pixelada estilo Minecraft, niebla densa, personajes vestidos y no sexualizados"
   };
   const d=document.createElement('div');d.className='msg bot';
   d.dataset.txt='[imagen generada: '+p+']';
   d.dataset.imgp=p;
   d.innerHTML=`🖼️ Mejorando idea… ✨`;
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
-  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas): ${p}`).then(async r=>{
+  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas${adultOn?"; estética adulta de terror oscuro permitida, pero PROHIBIDO desnudez o contenido sexual: todos vestidos y nada sexualizado":""}): ${p}`).then(async r=>{
     const model=(document.getElementById('imgModel')||{}).value||'gemini-2.5-flash-image-preview';
     try{
       if(window.puter&&puter.ai&&puter.ai.txt2img){
