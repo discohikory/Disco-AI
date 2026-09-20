@@ -116,7 +116,7 @@ html{-webkit-text-size-adjust:100%}
         <div class="rowbtns" style="justify-content:center"><button type="button" class="btn primary" id="camShot">📸 Capturar</button><button type="button" class="btn" id="camClose">Cerrar</button></div>
       </div>
     </div>
-    <div class="rowbtns"><button class="btn" id="chatClear" type="button">Limpiar chat 🧹</button><button class="btn" id="chatExport" type="button">Exportar ⬇️</button></div>
+    <div class="rowbtns"><button class="btn" id="chatClear" type="button">Limpiar chat 🧹</button><button class="btn" id="chatExport" type="button">Exportar ⬇️</button><small class="muted" id="qCount" style="align-self:center"></small></div>
     <div id="ageModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.9);place-items:center;padding:20px">
       <div class="glass" style="padding:22px;max-width:420px;text-align:center">
         <h2 class="st">🔞 Zona +18</h2>
@@ -202,8 +202,31 @@ document.getElementById('ageOk').addEventListener('click',()=>{
 adultRender();
 const chatBox=document.getElementById('chatBox'),chatIn=document.getElementById('chatIn');
 let hist=[];
+// ---------- Caché + contador diario (estira la cuota gratis) ----------
+let Q={hits:0};
+try{Q=Object.assign({hits:0},JSON.parse(localStorage.getItem('disco_q')||'{}'))}catch(e){}
+const todayK=()=>'u'+new Date().toISOString().slice(0,10);
+function paintQ(){const el=document.getElementById('qCount');if(el)el.textContent='⚡ '+(Q[todayK()]||0)+' usos hoy · '+(Q.hits||0)+' ahorrados por caché'}
+function bumpUse(cached){
+  try{
+    const k=todayK();Q[k]=(Q[k]||0)+1;
+    if(cached)Q.hits=(Q.hits||0)+1;
+    const ks=Object.keys(Q).filter(x=>x[0]==='u').sort().slice(-7);
+    const nq={hits:Q.hits};ks.forEach(x=>nq[x]=Q[x]);Q=nq;
+    localStorage.setItem('disco_q',JSON.stringify(Q));
+  }catch(e){}
+  paintQ();
+}
+let QC={};
+try{QC=JSON.parse(localStorage.getItem('disco_qc')||'{}')}catch(e){}
+function qcGet(k){const e=QC[k];if(e&&(Date.now()-e.ts)<86400000)return e;return null}
+function qcSet(k,v){try{QC[k]=v;const ks=Object.keys(QC);if(ks.length>40)ks.slice(0,ks.length-40).forEach(x=>delete QC[x]);localStorage.setItem('disco_qc',JSON.stringify(QC))}catch(e){}}
+paintQ();
 function aiExtract(r){if(!r)return"";if(typeof r==="string")return r;const m=r.message&&r.message.content;if(typeof m==="string")return m;if(Array.isArray(m))return m.map(p=>typeof p==="string"?p:(p.text||"")).join("");return r.text||r.output||""}
-async function aiChat(prompt,model){
+async function aiChat(prompt,model,ckey){
+  const ck=ckey?(curMode+'|'+curLang+'|'+(adultOn?'A':'')+'|'+ckey):null;
+  if(ck){const hit=qcGet(ck);if(hit){bumpUse(true);return{text:hit.text,via:hit.via+' · caché ⚡'}}}
+  const ok=(text,via)=>{if(ck)qcSet(ck,{text,via,ts:Date.now()});bumpUse(false);return{text,via}};
   const seq=[];
   if(model)seq.push(model);
   ["gpt-4o","claude-3-5-sonnet","gpt-4o-mini","gemini-2.0-flash","llama-3.3-70b-versatile"].forEach(m=>{if(!seq.includes(m))seq.push(m)});
@@ -211,16 +234,17 @@ async function aiChat(prompt,model){
     try{
       if(window.puter&&puter.ai&&puter.ai.chat){
         const t=aiExtract(await withTimeout(puter.ai.chat(prompt,{model:m,temperature:0.6}),28000));
-        if(t&&t.trim()&&!/^(error|invalid|unauthorized)/i.test(t.trim()))return{text:t.trim(),via:"Puter.js ("+m+")"};
+        if(t&&t.trim()&&!/^(error|invalid|unauthorized|rate|limit|quota|429)/i.test(t.trim()))return ok(t.trim(),"Puter.js ("+m+")");
       }
     }catch(e){console.warn("modelo "+m+" falló, siguiente…")}
   }
-  for(const pm of ["","?model=mistral"]){
+  for(const pm of ["","?model=mistral","?model=openai","?model=llama","?model=deepseek"]){
     try{
       const res=await fetchT("https://text.pollinations.ai/"+encodeURIComponent(prompt)+pm,25000);
+      if(res.status===429){await new Promise(r=>setTimeout(r,2000));continue}
       if(!res.ok)continue;
       const t=(await res.text()).trim();
-      if(t&&t.length>10&&!/^\s*\{?"error"/i.test(t))return{text:t,via:"Pollinations"+(pm?" (mistral)":"")};
+      if(t&&t.length>10&&!/^\s*\{?"error"/i.test(t))return ok(t,"Pollinations"+(pm?" ("+pm.split('=')[1]+")":""));
     }catch(e){console.warn("pollinations falló, siguiente…")}
   }
   throw new Error("all down");
@@ -329,7 +353,7 @@ function genImage(p,seed){
   d.dataset.imgp=p;
   d.innerHTML=`🖼️ Mejorando idea… ✨`;
   chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;
-  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas${adultOn?"; estética adulta de terror oscuro permitida, pero PROHIBIDO desnudez o contenido sexual: todos vestidos y nada sexualizado":""}): ${p}`).then(async r=>{
+  aiChat(`Convierte esto en UN prompt detallado en inglés para un generador de imágenes (una sola frase de 30-50 palabras, estilo: ${STYLES[style]||style}, sin explicaciones ni comillas${adultOn?"; estética adulta de terror oscuro permitida, pero PROHIBIDO desnudez o contenido sexual: todos vestidos y nada sexualizado":""}): ${p}`,'','img:'+p.toLowerCase().slice(0,120)).then(async r=>{
     const model=(document.getElementById('imgModel')||{}).value||'gemini-2.5-flash-image-preview';
     try{
       if(window.puter&&puter.ai&&puter.ai.txt2img){
@@ -388,7 +412,7 @@ async function wikiLook(topic){
     if(!pg||!pg.extract)throw 0;
     const full=pg.extract.slice(0,4000);
     const thumb=pg.thumbnail&&pg.thumbnail.source;
-    const s=await aiChat(`Resume esto de Wikipedia (${LANGS[curLang].sys}, máximo 150 palabras, con lo esencial y 1 dato curioso; NO inventes nada fuera del texto):\n\n${full}`);
+    const s=await aiChat(`Resume esto de Wikipedia (${LANGS[curLang].sys}, máximo 150 palabras, con lo esencial y 1 dato curioso; NO inventes nada fuera del texto):\n\n${full}`,'','wiki:'+topic.toLowerCase().slice(0,80));
     d.dataset.txt=s.text;
     d.innerHTML=`<b>${pg.title.replace(/</g,"&lt;")}</b><br>${s.text.replace(/</g,"&lt;").replace(/\n/g,"<br>")}${thumb?`<br><img src="${thumb}" style="max-width:100%;border-radius:8px;margin-top:8px">`:''}<br><a href="${link}" target="_blank" rel="noopener" style="color:#b39aff">Leer más ↗</a> <small class="muted">· Vía ${s.via} 🤖</small><span class="acts"><button type="button" data-say>🔊 Escuchar</button><button type="button" data-cp>📋 Copiar</button></span>`;
     hist.push('Disco AI: [wiki '+topic+']');
@@ -502,7 +526,7 @@ async function regen(box){
     if(img){
       r=await aiVision(LANGS[curLang].sys+", máximo 120 palabras."+COH,img);
     }else{
-      r=await aiChat(sysP()+COH+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+      r=await aiChat(sysP()+COH+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model,null);
     }
     const shown=curMode==='asistente'?cleanMD(r.text):r.text;
     box.dataset.txt=shown;
@@ -535,7 +559,7 @@ async function ask(q,regen){
     if(withImg){
       r=await aiVision((q||"Describe esta imagen en detalle.")+"\n"+LANGS[curLang].sys+", máximo 120 palabras."+COH,imgData);
     }else{
-      r=await aiChat(sysP()+COH+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model);
+      r=await aiChat(sysP()+COH+"\n\nHistorial: "+hist.slice(-6).join(" | ")+"\nPregunta: "+q,model,('q:'+q).slice(0,130));
     }
     const d=document.createElement('div');d.className='msg bot';
     const shown=curMode==='asistente'?cleanMD(r.text):r.text;
